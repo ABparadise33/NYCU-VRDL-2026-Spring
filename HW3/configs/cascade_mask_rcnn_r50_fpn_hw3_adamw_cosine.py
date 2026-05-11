@@ -1,0 +1,65 @@
+_base_ = "./cascade_mask_rcnn_r50_fpn_hw3.py"
+
+image_scale = (1024, 1024)
+
+train_pipeline = [
+    dict(type="LoadImageFromFile", backend_args=None),
+    dict(type="LoadAnnotations", with_bbox=True, with_mask=True),
+    dict(type="Resize", scale=image_scale, keep_ratio=True),
+    dict(type="RandomFlip", prob=0.5, direction="horizontal"),
+    dict(type="PackDetInputs"),
+]
+
+test_pipeline = [
+    dict(type="LoadImageFromFile", backend_args=None),
+    dict(type="Resize", scale=image_scale, keep_ratio=True),
+    dict(type="LoadAnnotations", with_bbox=True, with_mask=True),
+    dict(
+        type="PackDetInputs",
+        meta_keys=(
+            "img_id",
+            "img_path",
+            "ori_shape",
+            "img_shape",
+            "scale_factor",
+        ),
+    ),
+]
+
+train_dataloader = dict(dataset=dict(pipeline=train_pipeline))
+val_dataloader = dict(dataset=dict(pipeline=test_pipeline))
+test_dataloader = dict(dataset=dict(pipeline=test_pipeline))
+
+train_cfg = dict(type="EpochBasedTrainLoop", max_epochs=36, val_interval=1)
+
+optim_wrapper = dict(
+    _delete_=True,
+    type="AmpOptimWrapper",
+    optimizer=dict(
+        type="AdamW",
+        lr=1e-4,
+        betas=(0.9, 0.999),
+        weight_decay=1e-4,
+    ),
+    clip_grad=dict(max_norm=5.0, norm_type=2),
+)
+
+param_scheduler = [
+    dict(
+        type="LinearLR",
+        start_factor=0.1,
+        by_epoch=False,
+        begin=0,
+        end=500,
+    ),
+    dict(
+        type="CosineAnnealingLR",
+        eta_min=1e-6,
+        begin=0,
+        end=36,
+        by_epoch=True,
+        convert_to_iter_based=True,
+    ),
+]
+
+log_processor = dict(type="LogProcessor", window_size=20, by_epoch=True)
