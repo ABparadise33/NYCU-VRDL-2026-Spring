@@ -11,12 +11,12 @@ NYCU-VRDL-2026-Spring/
 └── HW3/   # Homework 3 submission code
 ```
 
-## Homework Repositories
+## Homework Folders
 
-| Folder | Original Repository | Main Topic |
+| Folder | Link | Main Topic |
 |---|---|---|
-| HW1 | https://github.com/ABparadise33/Visual-Recognitionusing-Deep-Learning-HW1 | Image classification |
-| HW2 | https://github.com/ABparadise33/Visual-Recognitionusing-Deep-Learning-HW2 | Object detection / segmentation pipeline |
-| HW3 | https://github.com/ABparadise33/vrdl_hw3_mmdet | Instance segmentation |
+| HW1 | https://github.com/ABparadise33/NYCU-VRDL-2026-Spring/tree/main/HW1 | Image classification |
+| HW2 | https://github.com/ABparadise33/NYCU-VRDL-2026-Spring/tree/main/HW2 | Digit detection |
+| HW3 | https://github.com/ABparadise33/NYCU-VRDL-2026-Spring/tree/main/HW3 | Instance segmentation |
 
 Each folder keeps the code and instructions needed for the corresponding homework submission.
