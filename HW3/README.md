@@ -26,23 +26,6 @@ pip install "numpy<2" --force-reinstall
 mim install "mmengine>=0.7.1" "mmcv==2.1.0" "mmdet==3.3.0"
 ```
 
-Verify the installation:
-
-```bash
-python - <<'PY'
-import torch
-import mmdet
-import mmcv
-import mmengine
-
-print("torch:", torch.__version__)
-print("cuda available:", torch.cuda.is_available())
-print("mmdet:", mmdet.__version__)
-print("mmcv:", mmcv.__version__)
-print("mmengine:", mmengine.__version__)
-PY
-```
-
 If your CUDA version is different, install the matching PyTorch build first, then install the remaining packages with the same commands.
 
 ## Dataset Preparation
