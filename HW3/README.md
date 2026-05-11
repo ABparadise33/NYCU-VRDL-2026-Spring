@@ -1,398 +1,200 @@
-# VRDL HW3 Cascade Mask R-CNN
+# NYCU Visual Recognition using Deep Learning HW3
 
-This repository contains the MMDetection-based training pipeline for HW3
-instance segmentation.
+**Student ID:** 314554035  
+**Name:** 張翊鞍
 
-## Why MMDetection
+## Introduction
 
-The original Cascade R-CNN repositories are useful references, but the Detectron
-implementation depends on Python 2 and Caffe2-era CUDA. For training on a 4090,
-we use MMDetection with Cascade Mask R-CNN + ResNet-50-FPN and COCO pretrained
-weights.
+This repository contains the implementation for NYCU 2026 Spring Visual Recognition using Deep Learning Homework 3: **Instance Segmentation**.
 
-## Setup
+The final solution is based on **Cascade Mask R-CNN** with a **ResNet-50-FPN** backbone. The pipeline converts the original TIFF images and masks into percentile-normalized PNG images and COCO RLE annotations, then trains the model with multi-scale augmentation. During inference, test-time augmentation, low score thresholding, NMS, and mask-derived bounding boxes are used to generate the CodaBench submission file.
 
-Recommended environment on vast.ai:
+## Environment Setup
+
+It is recommended to use Python 3.10 with a clean virtual environment.
 
 ```bash
-conda create -n hw3 python=3.10 -y
-conda activate hw3
+cd HW3
+
+python -m venv .venv
+source .venv/bin/activate
+
 pip install -U pip
-
-# Install PyTorch first. MIM needs torch to detect CUDA and select mmcv wheels.
 pip install torch==2.1.2 torchvision==0.16.2 --index-url https://download.pytorch.org/whl/cu121
-
 pip install -r requirements.txt
 pip install "numpy<2" --force-reinstall
 mim install "mmengine>=0.7.1" "mmcv==2.1.0" "mmdet==3.3.0"
+```
 
+Verify the installation:
+
+```bash
 python - <<'PY'
 import torch
+import mmdet
+import mmcv
+import mmengine
+
 print("torch:", torch.__version__)
 print("cuda available:", torch.cuda.is_available())
-print("cuda:", torch.version.cuda)
-print("gpu:", torch.cuda.get_device_name(0) if torch.cuda.is_available() else "none")
+print("mmdet:", mmdet.__version__)
+print("mmcv:", mmcv.__version__)
+print("mmengine:", mmengine.__version__)
 PY
 ```
 
-If your vast.ai image already has a working PyTorch install, you can skip the
-PyTorch install line. If the CUDA version is different, use the matching command
-from the PyTorch install selector.
+If your CUDA version is different, install the matching PyTorch build first, then install the remaining packages with the same commands.
 
-The rotate90 augmentation uses MMDetection's `Albu` wrapper. Keep
-`albumentations==1.3.1`; newer Albumentations versions can raise
-`ValueError: Key img_path is not in available keys`.
+## Dataset Preparation
 
-If reinstalling Albumentations upgrades NumPy or packaging, repair the
-environment with:
-
-```bash
-pip install "numpy<2" "packaging~=24.0" --force-reinstall
-pip install albumentations==1.3.1 --no-deps
-```
-
-## Download Dataset
-
-The dataset is hosted on Google Drive. From the repository root:
+Download and extract the HW3 dataset:
 
 ```bash
 python tools/download_dataset.py
 ```
 
-Expected layout after extraction:
+Expected raw dataset layout:
 
 ```text
-data/
-  train/
-  test_release/
-  test_image_name_to_ids.json
+HW3/
+├── data/
+│   ├── train/
+│   ├── test_release/
+│   └── test_image_name_to_ids.json
+└── ...
 ```
 
-## Prepare Dataset Once
-
-For the current best experiment path, prepare normalized PNG images and COCO
-annotations once:
+Prepare the final training format:
 
 ```bash
-python tools/prepare_norm_png_dataset.py
+python tools/prepare_norm_png_rle_dataset.py
 ```
 
-This reads the raw TIFF dataset under `data/`, writes normalized PNGs to
-`data_norm_png/`, and writes COCO JSON files to `annotations_norm_png/`. It does
-not modify the original `data/` folder. The script skips conversion when all
-outputs already exist, so it is safe to run before experiments.
-
-Generated files:
+This command creates:
 
 ```text
-data_norm_png/train/*.png
-data_norm_png/val/*.png
-data_norm_png/test_release/*.png
-annotations_norm_png/instances_hw3_train.json
-annotations_norm_png/instances_hw3_val.json
-annotations_norm_png/image_info_hw3_test.json
-annotations_norm_png/split_hw3.json
+HW3/
+├── data_norm_png_rle/
+│   ├── train/
+│   ├── val/
+│   └── test_release/
+├── annotations_norm_png_rle/
+│   ├── instances_hw3_train.json
+│   ├── instances_hw3_val.json
+│   ├── image_info_hw3_test.json
+│   └── split_hw3.json
+└── ...
 ```
 
-The conversion is paid once. During training, the normalized PNG configs read
-`data_norm_png/` directly; they do not redo p1-p99 normalization every epoch.
+The script performs p1-p99 percentile normalization, exports 3-channel PNG images, and stores masks as COCO compressed RLE annotations.
 
-If you need the original raw-TIFF COCO annotations for older ablations:
+## Training
 
-```bash
-python tools/convert_hw3_to_coco.py
-```
-
-For the raw-TIFF AdamW/cosine baseline with an 85/15 train/val split:
+Train the final multi-scale Cascade Mask R-CNN model:
 
 ```bash
-python tools/convert_hw3_to_coco.py \
-  --val-ratio 0.15 \
-  --out-dir annotations_adamw85
-```
-
-The normalized PNG prepare command is equivalent to:
-
-```bash
-python tools/convert_hw3_to_coco.py \
-  --val-ratio 0.15 \
-  --out-dir annotations_norm_png \
-  --export-images-dir data_norm_png \
-  --percentile-normalize
-```
-
-## Train
-
-Run training from the repository root:
-
-```bash
-python train.py configs/cascade_mask_rcnn_r50_fpn_hw3.py \
-  --exp-name baseline_bs4_amp \
+python train.py configs/cascade_mask_rcnn_r50_fpn_hw3_exp4_rle_aug_loss125_multiscale.py \
+  --exp-name final_multiscale \
   --amp \
-  --cfg-options train_dataloader.batch_size=4
+  --log-level WARNING
 ```
 
-With `--exp-name`, checkpoints are written to `checkpoints/<exp_name>`.
-After training, collect logs and derived artifacts:
-
-```bash
-python tools/collect_results.py baseline_bs4_amp
-```
-
-This writes:
+Outputs are saved under:
 
 ```text
-checkpoints/<exp_name>/*.pth
-logs/<exp_name>/
-results/<exp_name>/epoch_summary.csv
-results/<exp_name>/loss_curve.png
-results/<exp_name>/val_metrics_curve.png
+checkpoints/final_multiscale/
+logs/final_multiscale/
 ```
 
-The config uses:
+After training, collect logs, epoch summaries, and curves:
 
-- `cascade_mask_rcnn_r50_fpn_1x_coco` as the base architecture.
-- COCO pretrained checkpoint via `load_from`.
-- 4 HW3 foreground classes.
-- Validation by COCO bbox/mask metrics.
-- Epoch-wise checkpointing and metrics logging.
+```bash
+python tools/collect_results.py final_multiscale
+```
 
-`train.py` adds a concise progress line every 5 iterations by default:
+This creates:
 
 ```text
-[train] epoch 2/24 iter 35/84 avg_loss=1.2345 lr=2.50e-03 iter_time=1.80s eta=1m28s
+results/final_multiscale/
+├── epoch_summary.csv
+├── loss_curve.png
+└── val_metrics_curve.png
 ```
 
-Change the frequency with `--print-interval 1`, or disable it with
-`--no-simple-progress`.
+## Inference
 
-The same concise values are saved for plotting:
-
-```text
-work_dirs/<run_name>/simple_train_log.csv
-work_dirs/<run_name>/simple_val_log.csv
-```
-
-For older runs that only have MMEngine logs, plot curves from either source:
-
-```bash
-python tools/plot_curves.py work_dirs/cascade_mask_rcnn_r50_fpn_hw3_bs4_amp
-```
-
-Outputs:
-
-```text
-work_dirs/<run_name>/curves/loss_curve.png
-work_dirs/<run_name>/curves/val_metrics_curve.png
-work_dirs/<run_name>/curves/parsed_scalars.csv
-```
-
-Export one row per epoch with averaged train losses and validation AP metrics:
-
-```bash
-python tools/export_epoch_summary.py work_dirs/cascade_mask_rcnn_r50_fpn_hw3_bs4_amp
-```
-
-Output:
-
-```text
-work_dirs/<run_name>/epoch_summary.csv
-```
-
-For the new folder layout, prefer:
-
-```bash
-python tools/collect_results.py <exp_name>
-```
-
-MMEngine prints the system environment, resolved config, and hook order at
-startup. That wall of text is normal and only happens before training begins.
-If you want a quieter start, add `--log-level WARNING`.
-
-For RTX 4090, start with AMP and `train_dataloader.batch_size=2`. If the
-batch-size probe passes cleanly, try 4 next. The scripts set
-`PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:128` by default to reduce memory
-fragmentation without using PyTorch's fragile `expandable_segments` mode.
-
-## Find Max Batch Size
-
-Run this on the 4090 after MMDetection is installed:
-
-```bash
-python tools/find_max_batch_size.py \
-  configs/cascade_mask_rcnn_r50_fpn_hw3.py \
-  --start 1 --max-batch 16 --amp
-```
-
-Use the largest passing batch size with a safety margin, or use gradient
-accumulation if you want a larger effective batch size.
-
-## Augmentation Experiments
-
-Run one experiment at a time so the report can compare each added technique
-against the baseline.
-
-Classmate-style training baseline: AdamW, cosine LR schedule, 36 epochs, and
-`Resize(scale=(1024, 1024), keep_ratio=True)`. Use the 85/15 annotations
-generated above.
-
-```bash
-python train.py configs/cascade_mask_rcnn_r50_fpn_hw3_adamw_cosine_85split.py \
-  --exp-name baseline_adamw_cosine_85split_bs4_amp \
-  --amp \
-  --cfg-options train_dataloader.batch_size=4
-```
-
-Exp1: p1-p99 normalized 3-channel PNGs with the same AdamW/cosine schedule and
-1024 resize.
-
-```bash
-python train.py configs/cascade_mask_rcnn_r50_fpn_hw3_adamw_cosine_norm_png.py \
-  --exp-name exp1_norm_png_adamw_cosine_bs4_amp \
-  --amp \
-  --cfg-options train_dataloader.batch_size=4
-```
-
-Exp2: normalized PNGs plus 1024 resize, horizontal flip, vertical flip, and
-color augmentation.
-
-```bash
-python train.py configs/cascade_mask_rcnn_r50_fpn_hw3_adamw_cosine_norm_png_aug.py \
-  --exp-name exp2_norm_png_flip_color_bs4_amp \
-  --amp \
-  --cfg-options train_dataloader.batch_size=4
-```
-
-```bash
-python train.py configs/cascade_mask_rcnn_r50_fpn_hw3_vflip.py \
-  --exp-name exp_vflip_bs4_amp \
-  --amp \
-  --cfg-options train_dataloader.batch_size=4
-
-python train.py configs/cascade_mask_rcnn_r50_fpn_hw3_rotate90.py \
-  --exp-name exp_rotate90_bs4_amp \
-  --amp \
-  --cfg-options train_dataloader.batch_size=4
-
-python train.py configs/cascade_mask_rcnn_r50_fpn_hw3_photometric.py \
-  --exp-name exp_photometric_bs4_amp \
-  --amp \
-  --cfg-options train_dataloader.batch_size=4
-
-python train.py configs/cascade_mask_rcnn_r50_fpn_hw3_multiscale.py \
-  --exp-name exp_multiscale_bs4_amp \
-  --amp \
-  --cfg-options train_dataloader.batch_size=4
-
-python train.py configs/cascade_mask_rcnn_r50_fpn_hw3_flip_photometric.py \
-  --exp-name exp_flip_photometric_bs4_amp \
-  --amp \
-  --cfg-options train_dataloader.batch_size=4
-```
-
-## Inference and Submission
-
-Baseline inference without TTA or adaptive post-processing:
+Generate the CodaBench submission zip from the final checkpoint:
 
 ```bash
 python inference.py \
-  configs/cascade_mask_rcnn_r50_fpn_hw3.py \
-  checkpoints/baseline_bs4_amp/best_coco_segm_mAP_50_epoch_*.pth \
-  --exp-name baseline_bs4_amp \
-  --result-name best_no_tta_no_adaptive
-```
-
-TTA + adaptive post-processing inference:
-
-```bash
-python inference.py \
-  configs/cascade_mask_rcnn_r50_fpn_hw3.py \
-  checkpoints/baseline_bs4_amp/best_coco_segm_mAP_50_epoch_*.pth \
-  --exp-name baseline_bs4_amp \
-  --result-name best_tta_adaptive \
+  configs/cascade_mask_rcnn_r50_fpn_hw3_exp5_infer_score0.py \
+  checkpoints/final_multiscale/epoch_36.pth \
+  --test-dir data_norm_png_rle/test_release \
+  --mapping annotations_norm_png_rle/image_info_hw3_test.json \
+  --exp-name final_multiscale \
+  --result-name epoch36_tta_thr0000_nms05_bbox_from_mask \
   --tta \
-  --adaptive
+  --score-thr 0.0 \
+  --tta-nms-iou 0.5 \
+  --bbox-from-mask
 ```
 
-Adaptive mode enables class-wise score thresholds and class-wise area filtering.
-The `--tta` mode uses a manual instance-segmentation TTA path instead of
-MMDetection's `DetTTAModel`, because MMDetection 3.3.0 asserts that mask TTA is
-not supported by the built-in wrapper. By default it runs scales
-`800 1000 1200` with horizontal flip and merges predictions with per-class NMS.
-Both modes write compressed COCO RLE submission files. The zip filename can be
-experiment-specific, but the JSON inside the zip is always named
-`test-results.json` for CodaBench submission.
+The output files will be:
 
-For validation-set confusion matrix, first write validation predictions, then
-plot the matrix:
+```text
+results/final_multiscale/epoch36_tta_thr0000_nms05_bbox_from_mask.json
+results/final_multiscale/epoch36_tta_thr0000_nms05_bbox_from_mask.zip
+```
+
+The JSON file inside the zip is automatically named `test-results.json`, which matches the CodaBench submission requirement.
+
+## Confusion Matrix
+
+If a trained checkpoint is available, run validation inference and then plot the mask-IoU confusion matrix:
 
 ```bash
 python inference.py \
-  configs/cascade_mask_rcnn_r50_fpn_hw3.py \
-  checkpoints/baseline_bs4_amp/epoch_24.pth \
-  --mapping annotations/instances_hw3_val.json \
-  --test-dir data/train \
-  --exp-name baseline_bs4_amp \
-  --result-name val_epoch24_no_tta_no_adaptive
+  configs/cascade_mask_rcnn_r50_fpn_hw3_exp5_infer_score0.py \
+  checkpoints/final_multiscale/epoch_36.pth \
+  --test-dir data_norm_png_rle/val \
+  --mapping annotations_norm_png_rle/instances_hw3_val.json \
+  --exp-name final_multiscale \
+  --result-name val_epoch36_thr0000 \
+  --score-thr 0.0 \
+  --bbox-from-mask
 
 python tools/plot_confusion_matrix.py \
-  annotations/instances_hw3_val.json \
-  results/baseline_bs4_amp/val_epoch24_no_tta_no_adaptive.json \
-  --out-dir results/baseline_bs4_amp
+  annotations_norm_png_rle/instances_hw3_val.json \
+  results/final_multiscale/val_epoch36_thr0000.json \
+  --out-dir results/final_multiscale \
+  --score-thr 0.0
 ```
 
-Sweep validation score thresholds:
-
-```bash
-python tools/sweep_thresholds.py \
-  configs/cascade_mask_rcnn_r50_fpn_hw3.py \
-  checkpoints/baseline_bs4_amp/epoch_24.pth \
-  --exp-name baseline_bs4_amp \
-  --thresholds 0.01 0.03 0.05 0.08 0.10 0.15 0.20 0.25 0.30 0.35 0.40
-```
-
-Output:
+The generated files will be:
 
 ```text
-results/<exp_name>/threshold_sweep.csv
+results/final_multiscale/confusion_matrix.csv
+results/final_multiscale/confusion_matrix.png
 ```
 
-## Full vast.ai Terminal Sequence
+## Performance Snapshot
 
-```bash
-git clone <YOUR_GITHUB_REPO_URL>
-cd <YOUR_REPO_NAME>
+Training loss curve:
 
-conda create -n hw3 python=3.10 -y
-conda activate hw3
-pip install -U pip
-pip install torch==2.1.2 torchvision==0.16.2 --index-url https://download.pytorch.org/whl/cu121
-pip install -r requirements.txt
-pip install "numpy<2" --force-reinstall
-mim install "mmengine>=0.7.1" "mmcv==2.1.0" "mmdet==3.3.0"
+![Loss Curve](./assets/loss_curve.png)
 
-python - <<'PY'
-import torch
-print("torch:", torch.__version__)
-print("cuda available:", torch.cuda.is_available())
-print("cuda:", torch.version.cuda)
-print("gpu:", torch.cuda.get_device_name(0) if torch.cuda.is_available() else "none")
-PY
+Confusion matrix:
 
-python tools/download_dataset.py
-python tools/convert_hw3_to_coco.py
+Reserved. The figure will be added after regenerating validation predictions with the final checkpoint.
 
-python tools/find_max_batch_size.py configs/cascade_mask_rcnn_r50_fpn_hw3.py \
-  --start 1 --max-batch 16 --amp
+CodaBench ranking:
 
-python train.py configs/cascade_mask_rcnn_r50_fpn_hw3.py \
-  --work-dir work_dirs/cascade_mask_rcnn_r50_fpn_hw3_bs2_amp \
-  --amp \
-  --cfg-options train_dataloader.batch_size=2
+Reserved. The figure will be added after the final CodaBench submission is completed.
 
-python inference.py \
-  configs/cascade_mask_rcnn_r50_fpn_hw3.py \
-  work_dirs/cascade_mask_rcnn_r50_fpn_hw3/best_coco_segm_mAP_50_epoch_*.pth \
-  --tta \
-  --adaptive
-```
+## References
+
+This implementation is built with MMDetection and uses Cascade Mask R-CNN with COCO-pretrained weights.
+
+- [MMDetection](https://github.com/open-mmlab/mmdetection)
+- [Cascade R-CNN](https://arxiv.org/abs/1712.00726)
+- [Mask R-CNN](https://arxiv.org/abs/1703.06870)
