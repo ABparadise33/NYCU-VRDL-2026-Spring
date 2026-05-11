@@ -5,7 +5,7 @@ import os
 
 os.environ.setdefault("OPENCV_LOG_LEVEL", "SILENT")
 
-from tools.infer_submit import main
+from tools.inference_utils import main
 
 
 if __name__ == "__main__":

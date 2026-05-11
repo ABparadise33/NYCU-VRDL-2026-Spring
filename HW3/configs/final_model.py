@@ -1,9 +1,28 @@
-_base_ = "./cascade_mask_rcnn_r50_fpn_hw3_adamw_cosine.py"
+_base_ = "mmdet::cascade_rcnn/cascade-mask-rcnn_r50_fpn_1x_coco.py"
+
+classes = ("class1", "class2", "class3", "class4")
+data_root = "./"
+
+load_from = (
+    "https://download.openmmlab.com/mmdetection/v2.0/"
+    "cascade_rcnn/cascade_mask_rcnn_r50_fpn_1x_coco/"
+    "cascade_mask_rcnn_r50_fpn_1x_coco_20200203-9d4dcb24.pth"
+)
 
 train_pipeline = [
     dict(type="LoadImageFromFile", backend_args=None),
     dict(type="LoadAnnotations", with_bbox=True, with_mask=True),
-    dict(type="Resize", scale=(1024, 1024), keep_ratio=True),
+    dict(
+        type="RandomChoiceResize",
+        scales=[
+            (768, 768),
+            (896, 896),
+            (1024, 1024),
+            (1152, 1152),
+            (1280, 1280),
+        ],
+        keep_ratio=True,
+    ),
     dict(type="RandomFlip", prob=0.5, direction="horizontal"),
     dict(type="RandomFlip", prob=0.5, direction="vertical"),
     dict(
@@ -16,34 +35,80 @@ train_pipeline = [
     dict(type="PackDetInputs"),
 ]
 
+test_pipeline = [
+    dict(type="LoadImageFromFile", backend_args=None),
+    dict(type="Resize", scale=(1024, 1024), keep_ratio=True),
+    dict(type="LoadAnnotations", with_bbox=True, with_mask=True),
+    dict(
+        type="PackDetInputs",
+        meta_keys=(
+            "img_id",
+            "img_path",
+            "ori_shape",
+            "img_shape",
+            "scale_factor",
+        ),
+    ),
+]
+
 train_dataloader = dict(
     batch_size=1,
     num_workers=2,
+    persistent_workers=True,
     dataset=dict(
+        type="CocoDataset",
+        data_root=data_root,
         ann_file="annotations_norm_png_rle/instances_hw3_train.json",
         data_prefix=dict(img="data_norm_png_rle/train/"),
+        metainfo=dict(classes=classes),
+        filter_cfg=dict(filter_empty_gt=True, min_size=1),
         pipeline=train_pipeline,
-    )
+    ),
 )
 
 val_dataloader = dict(
+    batch_size=1,
+    num_workers=2,
+    persistent_workers=True,
     dataset=dict(
+        type="CocoDataset",
+        data_root=data_root,
         ann_file="annotations_norm_png_rle/instances_hw3_val.json",
         data_prefix=dict(img="data_norm_png_rle/val/"),
-    )
+        metainfo=dict(classes=classes),
+        test_mode=True,
+        pipeline=test_pipeline,
+    ),
 )
 
 test_dataloader = dict(
+    batch_size=1,
+    num_workers=2,
+    persistent_workers=True,
     dataset=dict(
+        type="CocoDataset",
+        data_root=data_root,
         ann_file="annotations_norm_png_rle/image_info_hw3_test.json",
         data_prefix=dict(img="data_norm_png_rle/test_release/"),
-    )
+        metainfo=dict(classes=classes),
+        test_mode=True,
+        pipeline=test_pipeline,
+    ),
 )
 
-val_evaluator = dict(ann_file="./annotations_norm_png_rle/instances_hw3_val.json")
+val_evaluator = dict(
+    type="CocoMetric",
+    ann_file=data_root + "annotations_norm_png_rle/instances_hw3_val.json",
+    metric=["bbox", "segm"],
+    classwise=True,
+)
+
 test_evaluator = dict(
-    ann_file="./annotations_norm_png_rle/image_info_hw3_test.json",
-    outfile_prefix="submissions/hw3_exp4_test",
+    type="CocoMetric",
+    ann_file=data_root + "annotations_norm_png_rle/image_info_hw3_test.json",
+    metric=["bbox", "segm"],
+    format_only=True,
+    outfile_prefix="submissions/hw3_test",
 )
 
 model = dict(
@@ -118,10 +183,62 @@ model = dict(
             min_bbox_size=0,
         ),
         rcnn=dict(
-            score_thr=0.001,
+            score_thr=0.0,
             nms=dict(type="nms", iou_threshold=0.5),
             max_per_img=300,
             mask_thr_binary=0.5,
         ),
     ),
+)
+
+train_cfg = dict(type="EpochBasedTrainLoop", max_epochs=36, val_interval=1)
+
+optim_wrapper = dict(
+    _delete_=True,
+    type="AmpOptimWrapper",
+    optimizer=dict(
+        type="AdamW",
+        lr=1e-4,
+        betas=(0.9, 0.999),
+        weight_decay=1e-4,
+    ),
+    clip_grad=dict(max_norm=5.0, norm_type=2),
+)
+
+param_scheduler = [
+    dict(
+        type="LinearLR",
+        start_factor=0.1,
+        by_epoch=False,
+        begin=0,
+        end=500,
+    ),
+    dict(
+        type="CosineAnnealingLR",
+        eta_min=1e-6,
+        begin=0,
+        end=36,
+        by_epoch=True,
+        convert_to_iter_based=True,
+    ),
+]
+
+default_hooks = dict(
+    checkpoint=dict(
+        type="CheckpointHook",
+        interval=1,
+        save_best="coco/segm_mAP_50",
+        rule="greater",
+        max_keep_ckpts=5,
+    ),
+    logger=dict(type="LoggerHook", interval=20),
+)
+
+log_processor = dict(type="LogProcessor", window_size=20, by_epoch=True)
+
+vis_backends = [dict(type="LocalVisBackend")]
+visualizer = dict(
+    type="DetLocalVisualizer",
+    vis_backends=vis_backends,
+    name="visualizer",
 )

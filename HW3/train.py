@@ -290,7 +290,7 @@ def main() -> None:
     print(f"Config: {args.config}")
     print(f"Work dir: {cfg.work_dir}")
     if args.exp_name:
-        print(f"Logs dir: logs/{args.exp_name} (run tools/collect_results.py after training)")
+        print(f"Logs dir: logs/{args.exp_name} (run tools/save_results.py after training)")
         print(f"Results dir: results/{args.exp_name}")
     print(f"Batch size: {cfg.train_dataloader.batch_size}")
     print(f"AMP: {'on' if args.amp else 'off'}")

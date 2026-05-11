@@ -33,7 +33,7 @@ If your CUDA version is different, install the matching PyTorch build first, the
 Download and extract the HW3 dataset:
 
 ```bash
-python tools/download_dataset.py
+python tools/download_data.py
 ```
 
 Expected raw dataset layout:
@@ -50,7 +50,7 @@ HW3/
 Prepare the final training format:
 
 ```bash
-python tools/prepare_norm_png_rle_dataset.py
+python tools/prepare_data.py
 ```
 
 This command creates:
@@ -76,8 +76,8 @@ The script performs p1-p99 percentile normalization, exports 3-channel PNG image
 Train the final multi-scale Cascade Mask R-CNN model:
 
 ```bash
-python train.py configs/cascade_mask_rcnn_r50_fpn_hw3_exp4_rle_aug_loss125_multiscale.py \
-  --exp-name final_multiscale \
+python train.py configs/final_model.py \
+  --exp-name final \
   --amp \
   --log-level WARNING
 ```
@@ -85,20 +85,20 @@ python train.py configs/cascade_mask_rcnn_r50_fpn_hw3_exp4_rle_aug_loss125_multi
 Outputs are saved under:
 
 ```text
-checkpoints/final_multiscale/
-logs/final_multiscale/
+checkpoints/final/
+logs/final/
 ```
 
 After training, collect logs, epoch summaries, and curves:
 
 ```bash
-python tools/collect_results.py final_multiscale
+python tools/save_results.py final
 ```
 
 This creates:
 
 ```text
-results/final_multiscale/
+results/final/
 ├── epoch_summary.csv
 ├── loss_curve.png
 └── val_metrics_curve.png
@@ -110,12 +110,12 @@ Generate the CodaBench submission zip from the final checkpoint:
 
 ```bash
 python inference.py \
-  configs/cascade_mask_rcnn_r50_fpn_hw3_exp5_infer_score0.py \
-  checkpoints/final_multiscale/epoch_36.pth \
+  configs/final_model.py \
+  checkpoints/final/epoch_36.pth \
   --test-dir data_norm_png_rle/test_release \
   --mapping annotations_norm_png_rle/image_info_hw3_test.json \
-  --exp-name final_multiscale \
-  --result-name epoch36_tta_thr0000_nms05_bbox_from_mask \
+  --exp-name final \
+  --result-name final_submission \
   --tta \
   --score-thr 0.0 \
   --tta-nms-iou 0.5 \
@@ -125,8 +125,8 @@ python inference.py \
 The output files will be:
 
 ```text
-results/final_multiscale/epoch36_tta_thr0000_nms05_bbox_from_mask.json
-results/final_multiscale/epoch36_tta_thr0000_nms05_bbox_from_mask.zip
+results/final/final_submission.json
+results/final/final_submission.zip
 ```
 
 The JSON file inside the zip is automatically named `test-results.json`, which matches the CodaBench submission requirement.
@@ -137,27 +137,27 @@ If a trained checkpoint is available, run validation inference and then plot the
 
 ```bash
 python inference.py \
-  configs/cascade_mask_rcnn_r50_fpn_hw3_exp5_infer_score0.py \
-  checkpoints/final_multiscale/epoch_36.pth \
+  configs/final_model.py \
+  checkpoints/final/epoch_36.pth \
   --test-dir data_norm_png_rle/val \
   --mapping annotations_norm_png_rle/instances_hw3_val.json \
-  --exp-name final_multiscale \
-  --result-name val_epoch36_thr0000 \
+  --exp-name final \
+  --result-name val_final \
   --score-thr 0.0 \
   --bbox-from-mask
 
-python tools/plot_confusion_matrix.py \
+python tools/make_confusion_matrix.py \
   annotations_norm_png_rle/instances_hw3_val.json \
-  results/final_multiscale/val_epoch36_thr0000.json \
-  --out-dir results/final_multiscale \
+  results/final/val_final.json \
+  --out-dir results/final \
   --score-thr 0.0
 ```
 
 The generated files will be:
 
 ```text
-results/final_multiscale/confusion_matrix.csv
-results/final_multiscale/confusion_matrix.png
+results/final/confusion_matrix.csv
+results/final/confusion_matrix.png
 ```
 
 ## Performance Snapshot

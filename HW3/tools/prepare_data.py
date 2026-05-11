@@ -24,7 +24,7 @@ def parse_args() -> argparse.Namespace:
         "--min-area",
         type=int,
         default=6,
-        help="Ignore extremely tiny instances, matching the classmate pipeline.",
+        help="Ignore extremely tiny mask instances.",
     )
     parser.add_argument("--force", action="store_true")
     return parser.parse_args()
@@ -52,7 +52,7 @@ def main() -> None:
 
     cmd = [
         sys.executable,
-        str(REPO_ROOT / "tools" / "convert_hw3_to_coco.py"),
+        str(REPO_ROOT / "tools" / "_convert_to_coco.py"),
         "--data-root",
         str(args.data_root),
         "--val-ratio",

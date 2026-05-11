@@ -64,8 +64,8 @@ def main() -> None:
 
     results_dir.mkdir(parents=True, exist_ok=True)
     copy_logs(work_dir, logs_dir)
-    run_tool("export_epoch_summary.py", str(work_dir), "--out", str(results_dir / "epoch_summary.csv"))
-    run_tool("plot_curves.py", str(work_dir), "--out-dir", str(results_dir))
+    run_tool("_export_epoch_summary.py", str(work_dir), "--out", str(results_dir / "epoch_summary.csv"))
+    run_tool("_plot_curves.py", str(work_dir), "--out-dir", str(results_dir))
     print(f"Collected results under {results_dir}")
 
 
