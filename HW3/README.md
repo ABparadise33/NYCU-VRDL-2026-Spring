@@ -162,17 +162,19 @@ results/final/confusion_matrix.png
 
 ## Performance Snapshot
 
+CodaBench public score: **0.5170**
+
 Training loss curve:
 
 ![Loss Curve](./assets/loss_curve.png)
 
 Confusion matrix:
 
-Reserved. The figure will be added after regenerating validation predictions with the final checkpoint.
+![Confusion Matrix](./assets/confusion_matrix.png)
 
 CodaBench ranking:
 
-Reserved. The figure will be added after the final CodaBench submission is completed.
+![CodaBench Ranking](./assets/CodaBench_rank.png)
 
 ## References
 

@@ -1,0 +1,6 @@
+gt\pred,class1,class2,class3,class4,background
+class1,1915,79,1,5,963
+class2,15,748,9,0,244
+class3,1,10,62,8,11
+class4,0,0,0,36,1
+background,1942,2153,825,1449,0
