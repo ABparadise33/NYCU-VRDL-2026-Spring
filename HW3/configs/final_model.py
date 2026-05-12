@@ -2,6 +2,7 @@ _base_ = "mmdet::cascade_rcnn/cascade-mask-rcnn_r50_fpn_1x_coco.py"
 
 classes = ("class1", "class2", "class3", "class4")
 data_root = "./"
+randomness = dict(seed=42, deterministic=False)
 
 load_from = (
     "https://download.openmmlab.com/mmdetection/v2.0/"
