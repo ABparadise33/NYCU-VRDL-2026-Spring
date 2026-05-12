@@ -16,8 +16,8 @@ It is recommended to use Python 3.10 with a clean virtual environment.
 ```bash
 cd HW3
 
-python -m venv .venv
-source .venv/bin/activate
+conda create -n hw3 python=3.10 -y
+conda activate hw3
 
 pip install -U pip
 pip install torch==2.1.2 torchvision==0.16.2 --index-url https://download.pytorch.org/whl/cu121
