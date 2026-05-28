@@ -11,6 +11,18 @@ The final solution is based on **PromptIR**, a prompt-based all-in-one blind ima
 
 The directional gradient loss is designed to penalize residual streak-like artifacts. For mostly vertical rain streaks, the x-direction gradient is weighted more heavily because it captures the left/right edge changes produced by thin vertical rain lines.
 
+## Code Files
+
+The required source files are also collected under `codes/`:
+
+```text
+codes/
+├── train.py
+├── infer.py
+├── data.py
+└── model.py
+```
+
 ## Environment Setup
 
 Clone this repository and create a clean Conda environment:
