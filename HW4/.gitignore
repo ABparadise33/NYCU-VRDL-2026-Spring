@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+
+# Local environments
+.venv/
+venv/
+env/
+
+# Dataset and generated outputs
+hw4_realse_dataset/
+runs/
+pred.npz
+pred*.npz
+*.zip
+
+# Model checkpoints and logs
+*.pt
+*.pth
+*.ckpt
+*.log
+
+# OS/editor
+.DS_Store
+*.swp
