@@ -9,8 +9,8 @@ from torch.nn import functional as F
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from promptir.data import HW4TestDataset, image_to_uint8_chw
-from promptir.model import PromptIR
+from data import HW4TestDataset, image_to_uint8_chw
+from model import PromptIR
 
 
 def parse_args():

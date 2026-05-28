@@ -1,4 +1,4 @@
-"""Train the unmodified PromptIR baseline on the HW4 rain/snow dataset."""
+"""Train PromptIR on the HW4 rain/snow dataset."""
 
 import argparse
 import csv
@@ -13,14 +13,14 @@ from torch.optim.lr_scheduler import _LRScheduler
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from promptir.data import (
+from data import (
     HW4RainSnowTrainDataset,
     HW4RainSnowValDataset,
     build_paired_samples,
     oversample_rain_samples,
     split_train_val_samples,
 )
-from promptir.model import PromptIR
+from model import PromptIR
 
 
 METRIC_FIELDS = [
