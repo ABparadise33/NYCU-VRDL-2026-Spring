@@ -124,7 +124,11 @@ Validation PSNR curve:
 
 ![PSNR Curve](./assets/psnr_curve.png)
 
-This task is image restoration rather than classification, so a confusion matrix is not applicable.
+CodaBench public score: **30.63**
+
+CodaBench ranking:
+
+![CodaBench Ranking](./assets/codabench_rank.png)
 
 ## References
 
