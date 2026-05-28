@@ -13,14 +13,15 @@ The directional gradient loss is designed to penalize residual streak-like artif
 
 ## Environment Setup
 
-It is recommended to use a clean virtual environment.
+Clone this repository and create a clean Conda environment:
 
 ```bash
+git clone https://github.com/ABparadise33/NYCU-VRDL-2026-Spring.git
+cd NYCU-VRDL-2026-Spring
 cd HW4
 
-python -m venv .venv
-source .venv/bin/activate
-
+conda create -n hw4 python=3.10 -y
+conda activate hw4
 pip install -r requirements.txt
 ```
 
